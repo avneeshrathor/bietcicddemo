@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build main.c",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-I../../include",
+                "*.c",
+                "-o",
+                "../../main"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/src/c"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

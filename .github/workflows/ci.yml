@@ -1,0 +1,102 @@
+name: C CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the code
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Set up build environment
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+        sudo apt-get install -y build-essential cmake openjdk-17-jdk
+
+
+    # Configure CMake
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+
+    # Build the project
+    - name: Build
+      run: |
+        cd build
+        make
+    
+    - name: Build Java Main.java
+      run: |
+        # Assuming the Java source file is in src/Main.java
+        # mkdir -p src        
+        javac src/myjava/Main.java
+
+    # Run tests
+    - name: Test
+      run: |
+        cd build
+        ctest --output-on-failure
+
+    # Run Java Main
+    - name: Run Java Main
+      run: |
+        echo "GitHub" | java -cp src myjava.Main
+
+    # Run JUnit Main (Test)
+    - name: Download JUnit
+      run: |
+        mkdir -p lib
+        curl -L -o lib/junit-platform-console-standalone.jar https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.2/junit-platform-console-standalone-1.10.2.jar
+
+    - name: Compile Java tests
+      run: |
+        javac -cp "lib/junit-platform-console-standalone.jar:src" src/myjava/Main.java
+
+    - name: Run JUnit tests
+      run: |
+        java -jar lib/junit-platform-console-standalone.jar --class-path src/myjava --scan-class-path
+
+    # Run Python app.py
+    - name: Run Python Factorial App
+      run: |
+        python3 src/python/app.py < <(echo 5)
+    # Run Python app.py with input redirection
+    # This is an alternative way to run the Python app with input
+    - name: Run Python Factorial App
+      run: |
+        echo 5 | python3 src/python/app.py
+
+    # Optional: Static analysis
+    - name: Run static analysis
+      run: |
+        sudo apt-get install -y cppcheck
+        cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem .
+
+    # Build Docker image (for deployment)
+    - name: Build Docker image
+      if: github.ref == 'refs/heads/main'
+      run: |
+        docker build --no-cache -t my-c-app:latest .
+
+    # Push Docker image to registry (e.g., Docker Hub)
+    - name: Push Docker image
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        docker tag my-c-app:latest ${{ secrets.DOCKER_USERNAME }}/my-c-app:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/my-c-app:latest
